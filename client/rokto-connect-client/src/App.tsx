@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import DecorationBlood from "../components/decorationBlood.tsx";
 import NavBar from "../components/NavBar.tsx"
-import StatsStrip from "../components/StatsStrip.tsx"
 import HowItWorks from "../components/HowItWorks.tsx"
 import BloodTypes from "../components/BloodTypes.tsx"
 import Features from "../components/Features.tsx"
