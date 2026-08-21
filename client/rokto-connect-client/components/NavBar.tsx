@@ -15,13 +15,13 @@ export default function NavBar() {
         </a>
 
         <nav className="hidden items-center gap-8 md:flex">
-          <a href="#how" className="font-body text-sm text-[color:var(--rc-bone)]/70 transition hover:text-[color:var(--rc-bone)]">
+          <a href="/#how" className="font-body text-sm text-[color:var(--rc-bone)]/70 transition hover:text-[color:var(--rc-bone)]">
             How it works
           </a>
-          <a href="#features" className="font-body text-sm text-[color:var(--rc-bone)]/70 transition hover:text-[color:var(--rc-bone)]">
+          <a href="/#features" className="font-body text-sm text-[color:var(--rc-bone)]/70 transition hover:text-[color:var(--rc-bone)]">
             Platform
           </a>
-          <a href="#hospitals" className="font-body text-sm text-[color:var(--rc-bone)]/70 transition hover:text-[color:var(--rc-bone)]">
+          <a href="/#hospitals" className="font-body text-sm text-[color:var(--rc-bone)]/70 transition hover:text-[color:var(--rc-bone)]">
             For hospitals
           </a>
         </nav>

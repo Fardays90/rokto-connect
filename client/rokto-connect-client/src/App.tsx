@@ -106,7 +106,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[color:var(--rc-ink)] antialiased">
-
       <NavBar />
       <Routes>
           <Route path="/" element={
