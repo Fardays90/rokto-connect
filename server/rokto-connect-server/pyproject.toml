@@ -3,7 +3,11 @@ name = "rokto-connect-server"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "bcrypt>=5.0.0",
     "fastapi>=0.141.1",
+    "passlib[bcrypt]>=1.7.4",
+    "pydantic>=2.13.4",
+    "pyjwt>=2.13.0",
     "pymsql>=0.0.1",
     "pymysql>=1.2.0",
     "python-dotenv>=1.2.3",
