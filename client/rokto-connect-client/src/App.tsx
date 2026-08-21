@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect } from "react";
 import DecorationBlood from "../components/decorationBlood.tsx";
 import NavBar from "../components/NavBar.tsx"
 import HowItWorks from "../components/HowItWorks.tsx"
@@ -6,6 +6,9 @@ import BloodTypes from "../components/BloodTypes.tsx"
 import Features from "../components/Features.tsx"
 import CTABanner from "../components/CTABanner.tsx"
 import './App.css'
+import { Routes, Route } from 'react-router-dom'
+import Login from './pages/Login'
+import Register from './pages/Register'
 
 const FONT_HREF =
   "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap";
@@ -20,7 +23,7 @@ function useGoogleFonts(href: string): void {
   }, [href]);
 }
 
-function Hero({ onOpenAuth }: { onOpenAuth: (mode: "login" | "signup") => void }) {
+function Hero() {
   return (
     <section id="top" className="relative overflow-hidden">
       <div
@@ -50,14 +53,14 @@ function Hero({ onOpenAuth }: { onOpenAuth: (mode: "login" | "signup") => void }
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <button
               type="button"
-              onClick={() => onOpenAuth("signup")}
+              onClick={() => { window.location.href = '/register' }}
               className="rounded-full bg-[color:var(--rc-blood)] px-6 py-3 font-body text-sm font-semibold text-[color:var(--rc-bone)] shadow-[0_8px_24px_-8px_rgba(200,30,58,0.6)] transition hover:bg-[color:var(--rc-blood-deep)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--rc-plasma)]"
             >
               Become a donor
             </button>
             <button
               type="button"
-              onClick={() => onOpenAuth("signup")}
+              onClick={() => { window.location.href = '/login' }}
               className="rounded-full border border-[color:var(--rc-line)] px-6 py-3 font-body text-sm font-semibold text-[color:var(--rc-bone)] transition hover:border-[color:var(--rc-bone)]/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--rc-plasma)]"
             >
               Request blood
@@ -98,113 +101,28 @@ function Footer() {
     </footer>
   );
 }
-
-function AuthModal({
-  mode,
-  onClose,
-}: {
-  mode: "login" | "signup";
-  onClose: () => void;
-}) {
-  const isSignup = mode === "signup";
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    onClose();
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-2xl border border-[color:var(--rc-line)] bg-[color:var(--rc-ink-raised)] p-8 shadow-2xl">
-        <div className="flex items-start justify-between">
-          <h2 className="font-display text-xl font-semibold text-[color:var(--rc-bone)]">
-            {isSignup ? "Become a donor" : "Welcome back"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="font-body text-sm text-[color:var(--rc-bone)]/50 transition hover:text-[color:var(--rc-bone)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--rc-plasma)]"
-          >
-            Close
-          </button>
-        </div>
-        <p className="mt-1 font-body text-sm text-[color:var(--rc-bone)]/55">
-          {isSignup ? "Join the network in under two minutes." : "Log in to manage your requests and availability."}
-        </p>
-
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          {isSignup && (
-            <div>
-              <label htmlFor="full_name" className="font-body text-xs font-medium text-[color:var(--rc-bone)]/70">
-                Full name
-              </label>
-              <input
-                id="full_name"
-                name="full_name"
-                type="text"
-                required
-                className="mt-1.5 w-full rounded-lg border border-[color:var(--rc-line)] bg-transparent px-3 py-2 font-body text-sm text-[color:var(--rc-bone)] outline-none transition focus:border-[color:var(--rc-blood)]"
-                placeholder="Ayesha Rahman"
-              />
-            </div>
-          )}
-          <div>
-            <label htmlFor="phone_number" className="font-body text-xs font-medium text-[color:var(--rc-bone)]/70">
-              Phone number
-            </label>
-            <input
-              id="phone_number"
-              name="phone_number"
-              type="tel"
-              required
-              className="mt-1.5 w-full rounded-lg border border-[color:var(--rc-line)] bg-transparent px-3 py-2 font-body text-sm text-[color:var(--rc-bone)] outline-none transition focus:border-[color:var(--rc-blood)]"
-              placeholder="+880 1XX XXX XXXX"
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="font-body text-xs font-medium text-[color:var(--rc-bone)]/70">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              className="mt-1.5 w-full rounded-lg border border-[color:var(--rc-line)] bg-transparent px-3 py-2 font-body text-sm text-[color:var(--rc-bone)] outline-none transition focus:border-[color:var(--rc-blood)]"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="mt-2 w-full rounded-full bg-[color:var(--rc-blood)] px-5 py-2.5 font-body text-sm font-semibold text-[color:var(--rc-bone)] transition hover:bg-[color:var(--rc-blood-deep)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--rc-plasma)]"
-          >
-            {isSignup ? "Create account" : "Log in"}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
 export default function App() {
   useGoogleFonts(FONT_HREF);
-  const [authMode, setAuthMode] = useState<"login" | "signup" | null>(null);
 
   return (
     <div className="min-h-screen bg-[color:var(--rc-ink)] antialiased">
 
-      <NavBar onOpenAuth={setAuthMode} />
-      <main>
-        <Hero onOpenAuth={setAuthMode} />
-        <HowItWorks />
-        <BloodTypes />
-        <Features />
-        <CTABanner onOpenAuth={setAuthMode} />
-      </main>
-      <Footer />
-
-      {authMode && <AuthModal mode={authMode} onClose={() => setAuthMode(null)} />}
+      <NavBar />
+      <Routes>
+          <Route path="/" element={
+            <>
+            <Hero />
+            <HowItWorks />
+            <BloodTypes />
+            <Features />
+            <CTABanner />
+            <Footer/>
+            </>
+          } 
+          />
+          <Route path="/register" element={<Register/>} />
+          <Route path="/login" element={<Login/>} />
+      </Routes>
     </div>
   );
 }

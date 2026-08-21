@@ -1,5 +1,7 @@
 
-export default function CTABanner({ onOpenAuth }: { onOpenAuth: (mode: "login" | "signup") => void }) {
+import { Link } from 'react-router-dom'
+
+export default function CTABanner() {
   return (
     <section id="hospitals" className="relative overflow-hidden">
       <div
@@ -21,20 +23,8 @@ export default function CTABanner({ onOpenAuth }: { onOpenAuth: (mode: "login" |
           </p>
         </div>
         <div className="flex flex-shrink-0 flex-wrap gap-4">
-          <button
-            type="button"
-            onClick={() => onOpenAuth("signup")}
-            className="rounded-full bg-[color:var(--rc-blood)] px-6 py-3 font-body text-sm font-semibold text-[color:var(--rc-bone)] transition hover:bg-[color:var(--rc-blood-deep)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--rc-plasma)]"
-          >
-            Become a donor
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenAuth("signup")}
-            className="rounded-full border border-[color:var(--rc-line)] px-6 py-3 font-body text-sm font-semibold text-[color:var(--rc-bone)] transition hover:border-[color:var(--rc-bone)]/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--rc-plasma)]"
-          >
-            Request blood
-          </button>
+          <Link to="/register" className="rounded-full bg-[color:var(--rc-blood)] px-6 py-3 font-body text-sm font-semibold text-[color:var(--rc-bone)] transition hover:bg-[color:var(--rc-blood-deep)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--rc-plasma)]">Become a donor</Link>
+          <Link to="/register" className="rounded-full border border-[color:var(--rc-line)] px-6 py-3 font-body text-sm font-semibold text-[color:var(--rc-bone)] transition hover:border-[color:var(--rc-bone)]/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--rc-plasma)]">Request blood</Link>
         </div>
       </div>
     </section>
