@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 db_connection = None
-
 def get_db_connection():
     return pymysql.connect(
         host=os.getenv("DB_HOST"),
