@@ -1,0 +1,13 @@
+RoktoConnect landing page
+Design tokens:
+ink        #0F0A0C  background
+blood      #C81E3A  primary brand red
+blood-deep #7A1128  gradient depth
+bone       #F3EDE7  primary text on dark
+plasma     #F4B740  urgency accent
+line       rgba(243,237,231,0.12)  hairline dividers
+Display face: Space Grotesk (headlines, wordmark)
+Body face:    IBM Plex Sans (paragraphs, UI)
+Utility face: JetBrains Mono (stats, badges, blood-type tags)
+This component injects the Google Fonts <link> on mount since this
+project has no index.html to edit directly.

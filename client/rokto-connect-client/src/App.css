@@ -1,1 +1,47 @@
 @import "tailwindcss";
+:root {
+    --rc-ink: #0F0A0C;
+    --rc-ink-raised: #150E10;
+    --rc-blood: #C81E3A;
+    --rc-blood-deep: #7A1128;
+    --rc-bone: #F3EDE7;
+    --rc-plasma: #F4B740;
+    --rc-line: rgba(243, 237, 231, 0.12);
+  }
+
+  .font-display { font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif; }
+  .font-body { font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; }
+  .font-mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace; }
+
+  .rc-pulse-path {
+    stroke-dasharray: 640;
+    stroke-dashoffset: 640;
+    animation: rc-draw 3.2s ease-in-out infinite;
+  }
+
+  .rc-node {
+    opacity: 0;
+    transform-origin: center;
+    animation: rc-node-in 0.6s ease-out forwards;
+  }
+  .rc-node-1 { animation-delay: 1.4s; }
+  .rc-node-2 { animation-delay: 1.7s; }
+  .rc-node-3 { animation-delay: 2.0s; }
+  .rc-node-4 { animation-delay: 2.3s; }
+  .rc-node-5 { animation-delay: 2.6s; }
+
+  @keyframes rc-draw {
+    0% { stroke-dashoffset: 640; }
+    45% { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: 0; }
+  }
+
+  @keyframes rc-node-in {
+    from { opacity: 0; transform: scale(0.4); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rc-pulse-path { animation: none; stroke-dashoffset: 0; }
+    .rc-node { animation: none; opacity: 1; transform: scale(1); }
+  }
