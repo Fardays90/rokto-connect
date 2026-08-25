@@ -1,9 +1,31 @@
 import { useForm } from 'react-hook-form'
+import { AxiosError } from 'axios'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useMutation } from '@tanstack/react-query'
+import { registerUser } from '../api/auth'
 import * as z from 'zod'
+import ApiModal from '../components/ApiModal'
+import React from 'react'
+import { useAuthStore } from '../stores/auth'
+import { getCurrentUser } from '../api/user'
+
+export interface RegisterPayload {
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  zip_code: string;
+  division: string;
+  district: string;
+  password: string;
+  is_donor?: boolean;
+  blood_type?: string;
+}
+
+interface ApiErrorResponse {
+  detail: string;
+}
 
 const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-
 const formSchema = z
   .object({
     first_name: z.string().min(2, 'First name must be at least 2 characters.'),
@@ -31,7 +53,8 @@ const formSchema = z
     }
   })
 
-type FormData = z.input<typeof formSchema>
+type RegisterFormValues = z.input<typeof formSchema>
+
 const ErrorMessage = ({ message }: { message?: string }) => {
   if (!message) return null
   return (
@@ -52,14 +75,13 @@ const ErrorMessage = ({ message }: { message?: string }) => {
     </div>
   )
 }
-
 export default function Register() {
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<FormData>({
+  } = useForm<RegisterFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       is_donor: false,
@@ -69,10 +91,41 @@ export default function Register() {
     mode: 'onTouched',
   })
   const isDonor = watch('is_donor')
+  const { mutate, isLoading, isError, isSuccess, error } = useMutation({
+    mutationFn: registerUser,
+    onSuccess: (data: any) => {
+      console.log('Registration successful:', data?.message);
+      // could show toast or redirect
+    },
+    // 2. Explicitly type error as AxiosError<ApiErrorResponse>
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      const errorMsg = err.response?.data?.detail || 'Registration failed'
+      console.error('Error:', errorMsg)
+    },
+  }) as any
 
-  const onSubmit = (data: FormData) => {
-    console.log('Form submitted successfully:', data)
+  const onSubmit = async (data: RegisterFormValues) => {
+    mutate(data)
   }
+
+  const [modalOpen, setModalOpen] = React.useState(false)
+  React.useEffect(() => {
+    if (isLoading || isError || isSuccess) setModalOpen(true)
+  }, [isLoading, isError, isSuccess])
+
+  const setAuth = useAuthStore.getState().setUser
+  React.useEffect(() => {
+    if (isSuccess) {
+      ;(async () => {
+        try {
+          const user = await getCurrentUser()
+          setAuth(user)
+        } catch (e) {
+          // ignore
+        }
+      })()
+    }
+  }, [isSuccess, setAuth])
   const getInputClasses = (hasError: boolean) =>
     `w-full rounded-lg border bg-black/20 px-4 py-3 text-sm outline-none transition placeholder:text-[color:var(--rc-bone)]/20 focus:ring-2 ${
       hasError
@@ -344,15 +397,46 @@ export default function Register() {
             </div>
 
                 
-            <button
-              type="submit"
-              className="group flex w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--rc-blood)] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[color:var(--rc-blood-deep)] hover:shadow-lg hover:shadow-[color:var(--rc-blood)]/20 active:scale-[0.99]"
-            >
-              Create account
-              <span className="transition-transform group-hover:translate-x-1">
-                →
-              </span>
-            </button>
+            <div>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="group flex w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--rc-blood)] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[color:var(--rc-blood-deep)] hover:shadow-lg hover:shadow-[color:var(--rc-blood)]/20 active:scale-[0.99] disabled:opacity-60"
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="white" strokeOpacity="0.2" strokeWidth="4" />
+                      <path d="M22 12a10 10 0 00-10-10" stroke="white" strokeWidth="4" strokeLinecap="round" />
+                    </svg>
+                    <span>Creating...</span>
+                  </>
+                ) : (
+                  <>
+                    Create account
+                    <span className="transition-transform group-hover:translate-x-1">→</span>
+                  </>
+                )}
+              </button>
+
+              {isError && (
+                <div className="mt-3 text-sm text-red-400">
+                  {(error as AxiosError<any>)?.response?.data?.detail || 'Registration failed. Please try again.'}
+                </div>
+              )}
+
+              {isSuccess && (
+                <div className="mt-3 text-sm text-[color:var(--rc-plasma)]">Account created successfully.</div>
+              )}
+            </div>
+            <ApiModal
+              open={modalOpen}
+              loading={isLoading}
+              success={isSuccess}
+              error={isError ? ((error as AxiosError<any>)?.response?.data?.detail || 'Registration failed') : null}
+              title="Register"
+              onClose={() => setModalOpen(false)}
+            />
           </form>
         </div>
 

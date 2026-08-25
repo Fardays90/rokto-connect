@@ -9,6 +9,13 @@ import './App.css'
 import { Routes, Route } from 'react-router-dom'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ProtectedLayout from './components/ProtectedLayout'
+import Dashboard from './pages/Dashboard'
+import Leaderboard from './pages/Leaderboard'
+import Profile from './pages/Profile'
+import DonorRequests from './pages/DonorRequests'
+import { getCurrentUser } from './api/user'
+import { useAuthStore } from './stores/auth'
 
 const FONT_HREF =
   "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap";
@@ -103,24 +110,41 @@ function Footer() {
 }
 export default function App() {
   useGoogleFonts(FONT_HREF);
+  // hydrate auth on app start
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const user = await getCurrentUser()
+        useAuthStore.getState().setUser(user)
+      } catch (e) {
+        // not logged in
+      }
+    })()
+  }, [])
 
   return (
     <div className="min-h-screen bg-[color:var(--rc-ink)] antialiased">
-      <NavBar />
       <Routes>
           <Route path="/" element={
             <>
-            <Hero />
-            <HowItWorks />
-            <BloodTypes />
-            <Features />
-            <CTABanner />
-            <Footer/>
+              <NavBar />
+              <Hero />
+              <HowItWorks />
+              <BloodTypes />
+              <Features />
+              <CTABanner />
+              <Footer/>
             </>
           } 
           />
-          <Route path="/register" element={<Register/>} />
-          <Route path="/login" element={<Login/>} />
+          <Route path="/register" element={<><NavBar/><Register/></>} />
+          <Route path="/login" element={<><NavBar/><Login/></>} />
+          <Route element={<ProtectedLayout/>}>
+            <Route path="/dashboard" element={<Dashboard/>} />
+            <Route path="/leaderboard" element={<Leaderboard/>} />
+            <Route path="/profile" element={<Profile/>} />
+            <Route path="/donor/requests" element={<DonorRequests/>} />
+          </Route>
       </Routes>
     </div>
   );
