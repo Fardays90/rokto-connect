@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import endpoints from '../../endpoints.json'
+import { API_ORIGIN } from '../api/axios'
 
 export interface ChatMessage {
   text: string
@@ -20,10 +20,7 @@ export function useChatSocket(requestId: number | null, enabled: boolean) {
       return
     }
 
-    const apiOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      ? endpoints.local
-      : endpoints.primary
-    const socketUrl = apiOrigin.replace(/^http/, 'ws')
+    const socketUrl = API_ORIGIN.replace(/^http/, 'ws')
     const socket = new WebSocket(`${socketUrl}/api/v1/ws/requests/${requestId}/chat`)
     socketRef.current = socket
 
