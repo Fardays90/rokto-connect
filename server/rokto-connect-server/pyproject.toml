@@ -12,4 +12,5 @@ dependencies = [
     "pymysql>=1.2.0",
     "python-dotenv>=1.2.3",
     "uvicorn>=0.52.4",
+    "websockets>=17.0.1",
 ]

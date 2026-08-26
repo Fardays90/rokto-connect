@@ -1,40 +1,12 @@
 import React from 'react'
 import CreateRequestModal from '../components/CreateRequestModal'
-import { fetchRequests } from '../api/requests'
-import { useQuery } from '@tanstack/react-query'
-import { useAuthStore } from '../stores/auth'
+import { fetchRequestChat, fetchRequests, releaseDonor } from '../api/requests'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCurrentUser, USER_KEY } from '../hooks/useCurrentUser'
+import { useRequestFeedSocket } from '../hooks/useRequestFeedSocket'
 import { Link } from 'react-router-dom'
-
-const URGENCY_STYLES: Record<string, string> = {
-  critical: 'border-[color:var(--rc-blood)]/50 bg-[color:var(--rc-blood)]/15 text-[color:var(--rc-blood)]',
-  high: 'border-[color:var(--rc-plasma)]/40 bg-[color:var(--rc-plasma)]/10 text-[color:var(--rc-plasma)]',
-  medium: 'border-[color:var(--rc-line)] bg-white/[0.04] text-[color:var(--rc-bone)]/70',
-  low: 'border-[color:var(--rc-line)] bg-transparent text-[color:var(--rc-bone)]/45',
-}
-
-function UrgencyPill({ urgency }: { urgency?: string }) {
-  const key = (urgency || '').toLowerCase()
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wider ${URGENCY_STYLES[key] || URGENCY_STYLES.medium}`}
-      style={{ fontFamily: 'var(--rc-mono)' }}
-    >
-      {key === 'critical' && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />}
-      {urgency || 'unknown'}
-    </span>
-  )
-}
-
-function BloodTypeTag({ type }: { type?: string }) {
-  return (
-    <div
-      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[color:var(--rc-blood)]/30 bg-[color:var(--rc-blood)]/10 text-sm font-semibold text-[color:var(--rc-blood)]"
-      style={{ fontFamily: 'var(--rc-mono)' }}
-    >
-      {type || '—'}
-    </div>
-  )
-}
+import { BloodTypeTag, StatusPill, UrgencyPill } from '../components/requestPills'
+import MyRequestsSection from '../components/MyRequestsSection'
 
 function RequestCard({ r }: any) {
   const location = r.district || r.division || r.zip_code || 'Location unknown'
@@ -49,6 +21,7 @@ function RequestCard({ r }: any) {
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
+            <StatusPill status={r.status} />
             <UrgencyPill urgency={r.urgency} />
             <span
               className="text-[11px] uppercase tracking-wider text-[color:var(--rc-bone)]/35"
@@ -165,9 +138,58 @@ function StatCard({ label, value, accent }: { label: string; value: React.ReactN
   )
 }
 
+function ActiveDonationCard({ requestId }: { requestId: number }) {
+  const queryClient = useQueryClient()
+  const { data: request, isLoading } = useQuery({
+    queryKey: ['request-chat', requestId],
+    queryFn: () => fetchRequestChat(requestId),
+    retry: false,
+  })
+  const releaseMutation = useMutation({
+    mutationFn: () => releaseDonor(requestId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: USER_KEY })
+      queryClient.invalidateQueries({ queryKey: ['requests'] })
+      queryClient.removeQueries({ queryKey: ['request-chat', requestId] })
+    },
+  })
+
+  if (isLoading) return <div className="mt-8 h-32 animate-pulse rounded-2xl border border-[color:var(--rc-line)] bg-white/[0.02]" />
+  if (!request) return null
+
+  return (
+    <section className="mt-8 rounded-2xl border border-[color:var(--rc-plasma)]/30 bg-[color:var(--rc-plasma)]/[0.05] p-6 shadow-xl shadow-black/20 sm:p-7">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--rc-plasma)]" style={{ fontFamily: 'var(--rc-mono)' }}>Your active donation</div>
+          <h2 className="mt-2 text-xl font-bold" style={{ fontFamily: 'var(--rc-display)' }}>You are helping {request.requester_first_name}.</h2>
+          <p className="mt-1 text-sm text-[color:var(--rc-bone)]/55">{request.blood_type} · {request.urgency} urgency · {request.status}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => releaseMutation.mutate()}
+            disabled={releaseMutation.isPending}
+            className="rounded-lg border border-red-500/40 px-4 py-3 text-sm font-semibold text-red-300 transition hover:border-red-500/60 hover:bg-red-500/10 disabled:opacity-50"
+          >
+            {releaseMutation.isPending ? 'Leaving...' : 'Let go'}
+          </button>
+          <Link to={`/chat/${request.request_id}`} className="rounded-lg bg-[color:var(--rc-plasma)] px-5 py-3 text-sm font-semibold text-[#0F0A0C] transition hover:brightness-110">
+            Open chat →
+          </Link>
+        </div>
+      </div>
+      {releaseMutation.isError && (
+        <p className="mt-3 text-xs text-red-300">Unable to leave this request. Please try again.</p>
+      )}
+    </section>
+  )
+}
+
 export default function Dashboard() {
-  const user = useAuthStore((s: any) => s.user)
+  const { data: user } = useCurrentUser()
   const [open, setOpen] = React.useState(false)
+  useRequestFeedSocket()
 
   const { data: recent, isLoading } = useQuery({
     queryKey: ['requests', { limit: 5 }],
@@ -186,6 +208,8 @@ export default function Dashboard() {
           (user.district || user.division) && user.zip_code ? ' · ' : ''
         }${user.zip_code || ''}`.trim()
       : 'Location not provided'
+
+  if (!user) return null
 
   return (
     <div style={{ fontFamily: 'var(--rc-body)' }}>
@@ -237,6 +261,12 @@ export default function Dashboard() {
         <StatCard label="Critical now" value={isLoading ? '—' : criticalCount} accent={criticalCount > 0} />
         <StatCard label="Urgent + critical" value={isLoading ? '—' : highCount} />
       </div>
+
+      <div className="mt-8">
+        <MyRequestsSection />
+      </div>
+
+      {user.is_donor && user.accepted_request_id && <ActiveDonationCard requestId={user.accepted_request_id} />}
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Main column */}

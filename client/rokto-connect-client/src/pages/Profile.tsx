@@ -1,10 +1,14 @@
 import React from 'react'
-import { useAuthStore } from '../stores/auth'
+import { useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
+import { Link } from 'react-router-dom'
 import { api } from '../api/axios'
 import ApiModal from '../components/ApiModal'
+import MyRequestsSection from '../components/MyRequestsSection'
+import BecomeDonorModal from '../components/BecomeDonorModal'
+import { USER_KEY, useCurrentUser } from '../hooks/useCurrentUser'
 
 const schema = z.object({
   first_name: z.string().min(2),
@@ -28,10 +32,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default function Profile() {
-  const user = useAuthStore((s: any) => s.user)
-  const fetchUser = useAuthStore((s: any) => s.fetchUser)
+  const { data: user } = useCurrentUser()
+  const queryClient = useQueryClient()
   const [editing, setEditing] = React.useState(false)
   const [modalOpen, setModalOpen] = React.useState(false)
+  const [donorModalOpen, setDonorModalOpen] = React.useState(false)
 
   const { register, handleSubmit, reset } = useForm({ resolver: zodResolver(schema) })
 
@@ -46,12 +51,14 @@ export default function Profile() {
     try {
       await api.patch('/users/me', data)
       setApiState({ success: true })
-      await fetchUser()
+      await queryClient.invalidateQueries({ queryKey: USER_KEY })
       setEditing(false)
     } catch (e: any) {
       setApiState({ error: e?.response?.data?.detail || 'Update failed' })
     }
   }
+
+  if (!user) return null
 
   const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase()
 
@@ -222,9 +229,9 @@ export default function Profile() {
                   >
                     {apiState.loading ? (
                       <>
-                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                          <circle cx="12" cy="12" r="10" stroke="white" strokeOpacity="0.2" strokeWidth="4" />
-                          <path d="M22 12a10 10 0 00-10-10" stroke="white" strokeWidth="4" strokeLinecap="round" />
+                        <svg className="rc-spinner h-4 w-4" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.25)" strokeWidth="3" />
+                          <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="3" strokeLinecap="round" strokeDasharray="20 36.5" />
                         </svg>
                         Saving...
                       </>
@@ -264,7 +271,7 @@ export default function Profile() {
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm text-[color:var(--rc-bone)]/60">Role</span>
                 <span className="text-xs text-[color:var(--rc-bone)]/80" style={{ fontFamily: 'var(--rc-mono)' }}>
-                  MEMBER
+                  {user.is_donor ? 'DONOR' : 'MEMBER'}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -274,6 +281,69 @@ export default function Profile() {
                 </span>
               </div>
             </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl border border-[color:var(--rc-line)] bg-white/[0.02] p-6">
+            {user.is_donor ? (
+              <>
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[color:var(--rc-plasma)]/30 bg-[color:var(--rc-plasma)]/10 text-[color:var(--rc-plasma)]">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4.5 w-4.5">
+                      <path d="M12 2.7s6.5 7.2 6.5 11.8a6.5 6.5 0 1 1-13 0C5.5 9.9 12 2.7 12 2.7z" opacity="0.9" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold" style={{ fontFamily: 'var(--rc-display)' }}>
+                      Donor
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-6 text-[color:var(--rc-bone)]/50">
+                      Registered with blood type{' '}
+                      <span className="font-semibold text-[color:var(--rc-bone)]/80">
+                        {user.donor_blood_type || '—'}
+                      </span>
+                      {' · '}
+                      <span style={{ fontFamily: 'var(--rc-mono)' }}>{user.donation_count ?? 0}</span>{' '}
+                      donation{(user.donation_count ?? 0) === 1 ? '' : 's'}.
+                      {user.accepted_request_id ? ' You are currently engaged with a request.' : ''}
+                    </p>
+                    <Link
+                      to="/donor/requests"
+                      className="group mt-4 flex items-center justify-center gap-1.5 rounded-lg border border-[color:var(--rc-plasma)]/50 px-4 py-2 text-xs font-semibold text-[color:var(--rc-plasma)] transition hover:bg-[color:var(--rc-plasma)]/10 active:scale-[0.99]"
+                    >
+                      Nearby requests
+                      <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                    </Link>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="pointer-events-none absolute -right-20 -top-20 h-36 w-36 rounded-full bg-[color:var(--rc-blood)]/10 blur-3xl" />
+                <div className="relative flex items-start gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[color:var(--rc-line)] bg-black/20 text-[color:var(--rc-blood)]">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4.5 w-4.5">
+                      <path d="M12 2.7s6.5 7.2 6.5 11.8a6.5 6.5 0 1 1-13 0C5.5 9.9 12 2.7 12 2.7z" opacity="0.9" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold" style={{ fontFamily: 'var(--rc-display)' }}>
+                      Become a donor
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-6 text-[color:var(--rc-bone)]/50">
+                      Pick your blood type and start accepting nearby requests.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setDonorModalOpen(true)}
+                      className="group mt-4 flex items-center gap-1.5 rounded-lg bg-[color:var(--rc-blood)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[color:var(--rc-blood-deep)] hover:shadow-lg hover:shadow-[color:var(--rc-blood)]/20 active:scale-[0.99]"
+                    >
+                      Become a donor
+                      <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="relative overflow-hidden rounded-2xl border border-[color:var(--rc-line)] bg-white/[0.02] p-6">
@@ -305,6 +375,11 @@ export default function Profile() {
         </aside>
       </div>
 
+      {/* Requests created by this user */}
+      <div className="mt-6">
+        <MyRequestsSection />
+      </div>
+
       <ApiModal
         open={!!apiState.loading || !!apiState.success || !!apiState.error}
         loading={!!apiState.loading}
@@ -313,6 +388,8 @@ export default function Profile() {
         title="Update Profile"
         onClose={() => setApiState({})}
       />
+
+      {donorModalOpen && <BecomeDonorModal onClose={() => setDonorModalOpen(false)} />}
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -402,9 +479,9 @@ function PasswordForm({ onClose }: { onClose: () => void }) {
         >
           {state.loading ? (
             <>
-              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="white" strokeOpacity="0.2" strokeWidth="4" />
-                <path d="M22 12a10 10 0 00-10-10" stroke="white" strokeWidth="4" strokeLinecap="round" />
+              <svg className="rc-spinner h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.25)" strokeWidth="3" />
+                <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="3" strokeLinecap="round" strokeDasharray="20 36.5" />
               </svg>
               Updating...
             </>

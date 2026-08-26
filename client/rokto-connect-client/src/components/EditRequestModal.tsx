@@ -1,48 +1,14 @@
 import type { ReactNode } from 'react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import type { CreateRequestPayload } from '../api/requests'
-import { createRequest } from '../api/requests'
+import type { BloodRequest, UpdateRequestPayload, UpdateRequestResponse } from '../api/requests'
+import { updateRequest } from '../api/requests'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import ApiModal from './ApiModal'
-import { useCurrentUser } from '../hooks/useCurrentUser'
-
-export const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-
-export const URGENCIES = [
-  {
-    value: 'low',
-    label: 'Low',
-    dot: 'bg-[color:var(--rc-bone)]/25',
-    active:
-      'peer-checked:bg-white/[0.06] peer-checked:text-[color:var(--rc-bone)]/75',
-    hint: 'No rush — donors can respond at their own pace.',
-  },
-  {
-    value: 'medium',
-    label: 'Medium',
-    dot: 'bg-[color:var(--rc-bone)]/50',
-    active: 'peer-checked:bg-white/[0.09] peer-checked:text-[color:var(--rc-bone)]',
-    hint: 'Needed within the next few days.',
-  },
-  {
-    value: 'high',
-    label: 'High',
-    dot: 'bg-[color:var(--rc-plasma)]',
-    active:
-      'peer-checked:bg-[color:var(--rc-plasma)]/10 peer-checked:text-[color:var(--rc-plasma)]',
-    hint: 'Needed within 24 hours.',
-  },
-  {
-    value: 'critical',
-    label: 'Critical',
-    dot: 'bg-[color:var(--rc-blood)] animate-pulse',
-    active:
-      'peer-checked:bg-[color:var(--rc-blood)]/15 peer-checked:text-[color:var(--rc-blood)]',
-    hint: 'Needed immediately — pushed to donors first.',
-  },
-]
+import { MY_REQUESTS_KEY } from '../api/requests'
+import { BLOOD_TYPES, URGENCIES } from './CreateRequestModal'
 
 const schema = z.object({
   blood_type: z.string().min(1, 'Select blood type'),
@@ -52,12 +18,6 @@ const schema = z.object({
     .trim()
     .min(1, 'Message is required')
     .max(500, 'Message must be under 500 characters'),
-  zip_code: z
-    .string()
-    .trim()
-    .regex(/^[0-9]{4}$/, 'ZIP code must be exactly 4 digits'),
-  division: z.string().trim().min(2, 'Division is required'),
-  district: z.string().trim().min(2, 'District is required'),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -70,57 +30,54 @@ function getInputClasses(hasError: boolean) {
   }`
 }
 
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null
-  return (
-    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-red-400">
-      <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 shrink-0">
-        <path
-          fillRule="evenodd"
-          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z"
-          clipRule="evenodd"
-        />
-      </svg>
-      <span>{message}</span>
-    </p>
-  )
-}
-
 function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
   return (
     <div>
       <label className="mb-2 block text-xs font-medium text-[color:var(--rc-bone)]/60">{label}</label>
       {children}
-      <FieldError message={error} />
+      {error && <p className="mt-1.5 text-xs text-red-400">{error}</p>}
     </div>
   )
 }
 
-export default function CreateRequestModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { data: user } = useCurrentUser()
+function locationLine(request: BloodRequest) {
+  const parts = [request.district, request.division, request.zip_code].filter(Boolean)
+  return parts.length > 0 ? parts.join(', ') : 'Location unknown'
+}
+
+export default function EditRequestModal({
+  request,
+  onClose,
+}: {
+  request: BloodRequest
+  onClose: () => void
+}) {
   const queryClient = useQueryClient()
 
   const {
     register,
     handleSubmit,
     reset,
-    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     mode: 'onTouched',
     defaultValues: {
-      blood_type: '',
-      urgency: 'medium',
-      message: '',
-      zip_code: user?.zip_code || '',
-      division: user?.division || '',
-      district: user?.district || '',
+      blood_type: request.blood_type,
+      urgency: (request.urgency || '').toLowerCase(),
+      message: request.message || '',
     },
   })
 
-  // the modal component stays mounted across open/close, so mutation state
-  // must be reset explicitly or stale errors reappear on next open
+  // pre-fill from the latest request data every time the modal opens
+  useEffect(() => {
+    reset({
+      blood_type: request.blood_type,
+      urgency: (request.urgency || '').toLowerCase(),
+      message: request.message || '',
+    })
+  }, [request, reset])
+
   const closeAll = () => {
     mutation.reset()
     onClose()
@@ -131,17 +88,31 @@ export default function CreateRequestModal({ open, onClose }: { open: boolean; o
     if (mutation.isSuccess) {
       closeAll()
     } else {
-      // errors: back to the form so it can be edited and retried
       mutation.reset()
     }
   }
 
   const mutation: any = useMutation({
-    mutationFn: (payload: CreateRequestPayload) => createRequest(payload),
-    onSuccess: () => {
+    mutationFn: (payload: UpdateRequestPayload) => updateRequest(request.request_id, payload),
+    onSuccess: (data: UpdateRequestResponse) => {
+      const updated = data.request
+
+      // seed caches with the fresh row first — the UI shows the new values
+      // instantly, and the invalidations below are just a safety net
+      queryClient.setQueryData(MY_REQUESTS_KEY, (old: any) =>
+        Array.isArray(old)
+          ? old.map((r: BloodRequest) => (r.request_id === updated.request_id ? updated : r))
+          : old
+      )
+      queryClient.invalidateQueries({ queryKey: MY_REQUESTS_KEY })
       queryClient.invalidateQueries({ queryKey: ['requests'] })
-      reset()
-      // let the ApiModal show its success state before closing everything
+
+      // keep the form in sync with what was actually saved
+      reset({
+        blood_type: updated.blood_type,
+        urgency: (updated.urgency || '').toLowerCase(),
+        message: updated.message || '',
+      })
       setTimeout(closeAll, 1200)
     },
   })
@@ -149,10 +120,6 @@ export default function CreateRequestModal({ open, onClose }: { open: boolean; o
   const onSubmit = (data: FormValues) => {
     mutation.mutate(data)
   }
-
-  if (!open) return null
-
-  const urgencyHint = URGENCIES.find((u) => u.value === watch('urgency'))?.hint
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -170,13 +137,13 @@ export default function CreateRequestModal({ open, onClose }: { open: boolean; o
               className="mb-2 text-xs uppercase tracking-[0.25em] text-[color:var(--rc-blood)]"
               style={{ fontFamily: 'var(--rc-mono)' }}
             >
-              New request
+              Edit request
             </div>
             <h3 className="text-xl font-bold tracking-tight" style={{ fontFamily: 'var(--rc-display)' }}>
-              Create blood request.
+              Update blood request.
             </h3>
             <p className="mt-1.5 text-xs leading-5 text-[color:var(--rc-bone)]/45">
-              Nearby donors matching your criteria will be alerted.
+              Request #{String(request.request_id).padStart(4, '0')}
             </p>
           </div>
 
@@ -196,13 +163,9 @@ export default function CreateRequestModal({ open, onClose }: { open: boolean; o
             <div className="relative">
               <select
                 {...register('blood_type')}
-                defaultValue=""
                 aria-label="Blood type"
                 className={`${getInputClasses(!!errors.blood_type)} appearance-none pr-10`}
               >
-                <option value="" disabled>
-                  Select blood type
-                </option>
                 {BLOOD_TYPES.map((bt) => (
                   <option key={bt} value={bt}>
                     {bt}
@@ -222,8 +185,7 @@ export default function CreateRequestModal({ open, onClose }: { open: boolean; o
           </Field>
 
           {/* Urgency */}
-          <div>
-            <label className="mb-2 block text-xs font-medium text-[color:var(--rc-bone)]/60">Urgency</label>
+          <Field label="Urgency" error={errors.urgency?.message}>
             <div className="grid grid-cols-4 gap-1.5 rounded-xl border border-[color:var(--rc-line)] bg-black/20 p-1.5">
               {URGENCIES.map(({ value, label, dot, active }) => (
                 <label key={value} className="cursor-pointer">
@@ -238,17 +200,7 @@ export default function CreateRequestModal({ open, onClose }: { open: boolean; o
                 </label>
               ))}
             </div>
-            {urgencyHint && (
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-[color:var(--rc-bone)]/40">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5 shrink-0 text-[color:var(--rc-bone)]/30">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M12 8v4.5" strokeLinecap="round" />
-                  <path d="M12 15.8v.2" strokeLinecap="round" />
-                </svg>
-                {urgencyHint}
-              </p>
-            )}
-          </div>
+          </Field>
 
           {/* Message */}
           <Field label="Message" error={errors.message?.message}>
@@ -260,25 +212,20 @@ export default function CreateRequestModal({ open, onClose }: { open: boolean; o
             />
           </Field>
 
-          {/* Location */}
-          <div>
+          {/* Location is locked — deleting and recreating is the only way to move a request */}
+          <div className="rounded-lg border border-[color:var(--rc-line)] bg-black/20 px-4 py-3">
             <div
-              className="mb-2 text-xs uppercase tracking-wider text-[color:var(--rc-bone)]/40"
+              className="text-[10px] uppercase tracking-wider text-[color:var(--rc-bone)]/40"
               style={{ fontFamily: 'var(--rc-mono)' }}
             >
-              Location
+              Location · locked
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="ZIP code" error={errors.zip_code?.message}>
-                <input placeholder="1212" inputMode="numeric" maxLength={4} {...register('zip_code')} className={getInputClasses(!!errors.zip_code)} />
-              </Field>
-              <Field label="Division" error={errors.division?.message}>
-                <input placeholder="Dhaka" autoComplete="address-level1" {...register('division')} className={getInputClasses(!!errors.division)} />
-              </Field>
-              <Field label="District" error={errors.district?.message}>
-                <input placeholder="Dhaka" autoComplete="address-level2" {...register('district')} className={getInputClasses(!!errors.district)} />
-              </Field>
-            </div>
+            <p className="mt-1 truncate text-sm text-[color:var(--rc-bone)]/70">
+              {locationLine(request)}
+            </p>
+            <p className="mt-1.5 text-xs leading-5 text-[color:var(--rc-bone)]/35">
+              To change the location, delete this request and create a new one.
+            </p>
           </div>
 
           {/* Actions */}
@@ -301,11 +248,11 @@ export default function CreateRequestModal({ open, onClose }: { open: boolean; o
                     <circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.25)" strokeWidth="3" />
                     <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="3" strokeLinecap="round" strokeDasharray="20 36.5" />
                   </svg>
-                  Creating...
+                  Saving...
                 </>
               ) : (
                 <>
-                  Create request
+                  Save changes
                   <span className="transition-transform group-hover:translate-x-0.5">→</span>
                 </>
               )}
@@ -318,9 +265,9 @@ export default function CreateRequestModal({ open, onClose }: { open: boolean; o
           loading={mutation.isLoading}
           success={mutation.isSuccess}
           error={
-            mutation.isError ? (mutation.error as any)?.response?.data?.detail || 'Failed to create request' : null
+            mutation.isError ? (mutation.error as any)?.response?.data?.detail || 'Failed to update request' : null
           }
-          title="Create Request"
+          title="Edit Request"
           onClose={dismissStatus}
         />
       </div>

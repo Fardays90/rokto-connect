@@ -3,11 +3,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware import cors
 from app.core.db import init_db, close_db
+from app.core.ws import capture_loop
 from app.api.v1.router import api_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    capture_loop()
     yield
     close_db()
 

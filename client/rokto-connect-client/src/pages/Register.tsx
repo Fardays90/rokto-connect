@@ -6,8 +6,8 @@ import { registerUser } from '../api/auth'
 import * as z from 'zod'
 import ApiModal from '../components/ApiModal'
 import React from 'react'
-import { useAuthStore } from '../stores/auth'
 import { getCurrentUser } from '../api/user'
+import { useSetCurrentUser } from '../hooks/useCurrentUser'
 
 export interface RegisterPayload {
   first_name: string;
@@ -113,19 +113,19 @@ export default function Register() {
     if (isLoading || isError || isSuccess) setModalOpen(true)
   }, [isLoading, isError, isSuccess])
 
-  const setAuth = useAuthStore.getState().setUser
+  const setUser = useSetCurrentUser()
   React.useEffect(() => {
     if (isSuccess) {
       ;(async () => {
         try {
           const user = await getCurrentUser()
-          setAuth(user)
+          setUser(user)
         } catch (e) {
           // ignore
         }
       })()
     }
-  }, [isSuccess, setAuth])
+  }, [isSuccess, setUser])
   const getInputClasses = (hasError: boolean) =>
     `w-full rounded-lg border bg-black/20 px-4 py-3 text-sm outline-none transition placeholder:text-[color:var(--rc-bone)]/20 focus:ring-2 ${
       hasError
@@ -405,9 +405,9 @@ export default function Register() {
               >
                 {isLoading ? (
                   <>
-                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle cx="12" cy="12" r="10" stroke="white" strokeOpacity="0.2" strokeWidth="4" />
-                      <path d="M22 12a10 10 0 00-10-10" stroke="white" strokeWidth="4" strokeLinecap="round" />
+                    <svg className="rc-spinner h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.25)" strokeWidth="3" />
+                      <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="3" strokeLinecap="round" strokeDasharray="20 36.5" />
                     </svg>
                     <span>Creating...</span>
                   </>

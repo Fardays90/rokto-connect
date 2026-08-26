@@ -36,6 +36,16 @@
     100% { stroke-dashoffset: 0; }
   }
 
+  @keyframes rc-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .rc-spinner {
+    animation: rc-spin 0.9s linear infinite;
+    transform-origin: center;
+  }
+
   @keyframes rc-node-in {
     from { opacity: 0; transform: scale(0.4); }
     to { opacity: 1; transform: scale(1); }
@@ -44,4 +54,5 @@
   @media (prefers-reduced-motion: reduce) {
     .rc-pulse-path { animation: none; stroke-dashoffset: 0; }
     .rc-node { animation: none; opacity: 1; transform: scale(1); }
+    .rc-spinner { animation: none; }
   }

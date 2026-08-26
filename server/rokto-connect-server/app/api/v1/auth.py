@@ -29,7 +29,6 @@ def register(user_data: RegisterSchema, response: Response, cursor=Depends(get_c
     new_id = cursor.lastrowid
     
     token = create_access_token({"user_id": new_id, "phone": user_data.phone_number})
-    # set HttpOnly cookie so browser will send it on subsequent requests
     response.set_cookie(
         COOKIE_NAME,
         token,
@@ -67,9 +66,7 @@ def login(user_data: LoginSchema, response: Response, cursor=Depends(get_cursor)
 
 @router.get('/me')
 def me(request: Request, cursor=Depends(get_cursor)):
-    # try cookie first
     token = request.cookies.get(COOKIE_NAME)
-    # fallback to Authorization header
     if not token:
         auth = request.headers.get('Authorization')
         if auth and auth.lower().startswith('bearer '):
@@ -87,8 +84,11 @@ def me(request: Request, cursor=Depends(get_cursor)):
     user = cursor.fetchone()
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
-
-    # return safe user shape
+    cursor.execute(
+        'SELECT blood_type, donation_count, request_id FROM DONOR WHERE user_id = %s',
+        (user_id,),
+    )
+    donor = cursor.fetchone()
     return {
         'user_id': user['user_id'],
         'first_name': user['first_name'],
@@ -98,6 +98,10 @@ def me(request: Request, cursor=Depends(get_cursor)):
         'last_name': user['last_name'],
         'phone_number': user['phone_number'],
         'verified': bool(user.get('verified', False)),
+        'is_donor': donor is not None,
+        'donor_blood_type': donor['blood_type'] if donor else None,
+        'donation_count': donor['donation_count'] if donor else None,
+        'accepted_request_id': donor['request_id'] if donor else None,
     }
 
 

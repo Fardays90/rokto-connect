@@ -14,8 +14,7 @@ import Dashboard from './pages/Dashboard'
 import Leaderboard from './pages/Leaderboard'
 import Profile from './pages/Profile'
 import DonorRequests from './pages/DonorRequests'
-import { getCurrentUser } from './api/user'
-import { useAuthStore } from './stores/auth'
+import Chat from './pages/Chat'
 
 const FONT_HREF =
   "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap";
@@ -110,17 +109,6 @@ function Footer() {
 }
 export default function App() {
   useGoogleFonts(FONT_HREF);
-  // hydrate auth on app start
-  useEffect(() => {
-    ;(async () => {
-      try {
-        const user = await getCurrentUser()
-        useAuthStore.getState().setUser(user)
-      } catch (e) {
-        // not logged in
-      }
-    })()
-  }, [])
 
   return (
     <div className="min-h-screen bg-[color:var(--rc-ink)] antialiased">
@@ -144,6 +132,7 @@ export default function App() {
             <Route path="/leaderboard" element={<Leaderboard/>} />
             <Route path="/profile" element={<Profile/>} />
             <Route path="/donor/requests" element={<DonorRequests/>} />
+            <Route path="/chat/:requestId" element={<Chat/>} />
           </Route>
       </Routes>
     </div>

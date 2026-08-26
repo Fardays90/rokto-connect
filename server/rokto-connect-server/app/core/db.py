@@ -1,12 +1,14 @@
 import os
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
+import threading
+
 import pymysql
 import pymysql.cursors
 from dotenv import load_dotenv
 
 load_dotenv()
-db_connection = None
+
+_local = threading.local()
+
 
 def get_db_connection():
     return pymysql.connect(
@@ -18,26 +20,46 @@ def get_db_connection():
         charset="utf8mb4",
         connect_timeout=10,
         cursorclass=pymysql.cursors.DictCursor,
-        ssl={"ssl": True}
+        ssl={"ssl": True},
+        init_command="SET time_zone = '+00:00'",
+        autocommit=True,
     )
 
+
+def _get_thread_connection():
+    conn = getattr(_local, "conn", None)
+    if conn is not None:
+        try:
+            conn.ping(reconnect=True)
+            return conn
+        except Exception:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            _local.conn = None
+
+    conn = get_db_connection()
+    _local.conn = conn
+    return conn
+
+
 def init_db():
-    global db_connection
     print("Connecting to Aiven MySQL Database...")
-    db_connection = get_db_connection()
+    _get_thread_connection()
     print("Successfully connected to MySQL!")
+
+
 def close_db():
-    global db_connection
-    if db_connection and db_connection.open:
-        db_connection.close()
+    conn = getattr(_local, "conn", None)
+    if conn is not None and conn.open:
+        conn.close()
         print("MySQL connection closed.")
+
+
 def get_cursor():
-    global db_connection
-    if db_connection is None or not db_connection.open:
-        db_connection = get_db_connection()
-    else:
-        db_connection.ping(reconnect=True)
-    cursor = db_connection.cursor()
+    conn = _get_thread_connection()
+    cursor = conn.cursor()
     try:
         yield cursor
     finally:

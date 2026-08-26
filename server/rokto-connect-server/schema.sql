@@ -2,6 +2,9 @@ CREATE TABLE IF NOT EXISTS USERS (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     first_name varchar(100) NOT NULL,
     last_name varchar(100) NOT NULL,
+    zip_code varchar(10) NOT NULL,
+    district varchar(100) NOT NULL,
+    division varchar(100) NOT NULL,
     phone_number varchar(20) NOT NULL,
     password_hash varchar(255) NOT NULL,
     verified boolean NOT NULL DEFAULT FALSE
@@ -21,11 +24,15 @@ CREATE TABLE IF NOT EXISTS DONOR_AVAILABLITY (
 
 CREATE TABLE IF NOT EXISTS REQUEST (
     request_id INT AUTO_INCREMENT PRIMARY KEY,
-    blood_type varchar(10),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    urgency varchar(50),
-    status varchar(50),
+    blood_type varchar(10) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    urgency varchar(50) NOT NULL,
+    status varchar(50) NOT NULL,
     user_id INT,
+    message varchar(500) NOT NULL,
+    zip_code varchar(10) NOT NULL,
+    division varchar(100) NOT NULL,
+    district varchar(100) NOT NULL,
 
     CONSTRAINT fk_request_by
         FOREIGN KEY (user_id)

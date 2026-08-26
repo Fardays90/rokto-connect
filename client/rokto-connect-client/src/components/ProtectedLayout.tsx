@@ -1,7 +1,7 @@
 // React import not required with the new JSX transform
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../stores/auth'
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { logoutUser } from '../api/auth'
+import { useClearCurrentUser, useCurrentUser } from '../hooks/useCurrentUser'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg px-3 py-2 text-sm transition ${
@@ -11,9 +11,11 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   }`
 
 export default function ProtectedLayout() {
-  const user = useAuthStore((s: any) => s.user)
-  const clearUser = useAuthStore((s: any) => s.clearUser)
+  const { data: user, isLoading } = useCurrentUser()
+  const clearUser = useClearCurrentUser()
   const navigate = useNavigate()
+  const location = useLocation()
+  const isChatPage = location.pathname.startsWith('/chat/')
 
   const handleLogout = async () => {
     try {
@@ -25,11 +27,20 @@ export default function ProtectedLayout() {
     navigate('/login')
   }
 
-  if (!user) {
-    // simple guard: render a fallback until router redirects
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">Not authenticated</div>
+      <div className="flex min-h-screen items-center justify-center bg-[color:var(--rc-ink)]">
+        <svg className="rc-spinner h-8 w-8" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="rgba(243,237,231,0.15)" strokeWidth="3" />
+          <circle cx="12" cy="12" r="9" stroke="var(--rc-blood)" strokeWidth="3" strokeLinecap="round" strokeDasharray="16 40.5" />
+        </svg>
+      </div>
     )
+  }
+
+  if (!user) {
+    // session missing/expired — send to login
+    return <Navigate to="/login" replace />
   }
 
   const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase()
@@ -44,7 +55,7 @@ export default function ProtectedLayout() {
   )
 
   return (
-    <div className="min-h-screen bg-[color:var(--rc-ink)] text-[color:var(--rc-bone)]" style={{ fontFamily: 'var(--rc-body)' }}>
+    <div className={`${isChatPage ? 'flex h-dvh flex-col overflow-hidden' : 'min-h-screen'} bg-[color:var(--rc-ink)] text-[color:var(--rc-bone)]`} style={{ fontFamily: 'var(--rc-body)' }}>
       <header className="sticky top-0 z-40 border-b border-[color:var(--rc-line)] bg-[color:var(--rc-ink)]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
           <div className="flex items-center gap-6">
@@ -79,18 +90,18 @@ export default function ProtectedLayout() {
         <nav className="flex items-center gap-1 overflow-x-auto px-4 pb-3 text-sm md:hidden">{links}</nav>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className={isChatPage ? 'mx-auto min-h-0 w-full max-w-6xl flex-1 px-3 py-3 sm:px-6 sm:py-4' : 'mx-auto max-w-6xl px-6 py-8'}>
         <Outlet />
       </main>
 
-      <footer className="border-t border-[color:var(--rc-line)]">
+      {!isChatPage && <footer className="border-t border-[color:var(--rc-line)]">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-[color:var(--rc-bone)]/40">রক্তই জীবন — blood is life.</p>
           <p className="font-mono text-[11px] tracking-wide text-[color:var(--rc-bone)]/25" style={{ fontFamily: 'var(--rc-mono)' }}>
             © {new Date().getFullYear()} RoktoConnect
           </p>
         </div>
-      </footer>
+      </footer>}
     </div>
   )
 }
