@@ -37,7 +37,12 @@ def get_current_user(request: Request, cursor: Cursor = Depends(get_cursor)):
 
 
 def get_ws_user(websocket: WebSocket, cursor: Cursor = Depends(get_cursor)) -> Tuple[Optional[Dict[str, Any]], bool]:
+    # browsers can't set headers on WebSocket handshakes, so accept the
+    # token as a ?token= query param as well — used by cross-site clients
+    # whose session cookie never reaches the server
     token = websocket.cookies.get(COOKIE_NAME)
+    if not token:
+        token = websocket.query_params.get("token")
     payload = decode_access_token(token) if token else None
 
     if not payload or not payload.get("user_id"):

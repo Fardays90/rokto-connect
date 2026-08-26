@@ -38,7 +38,10 @@ def register(user_data: RegisterSchema, response: Response, cursor=Depends(get_c
         max_age=COOKIE_MAX_AGE,
         path='/'
     )
-    return {"message": "User registered successfully"}
+    # also return the token so non-cookie clients (e.g. a cross-site deployed
+    # frontend talking to a localhost API) can send it as a Bearer header —
+    # session cookies don't survive third-party contexts
+    return {"message": "User registered successfully", "access_token": token}
 @router.post("/login", status_code=status.HTTP_200_OK)
 def login(user_data: LoginSchema, response: Response, cursor=Depends(get_cursor)):
     print(user_data.phone_number)
@@ -61,7 +64,8 @@ def login(user_data: LoginSchema, response: Response, cursor=Depends(get_cursor)
         max_age=COOKIE_MAX_AGE,
         path='/'
     )
-    return {"message": "Login successful"}
+    # same rationale as in register: hand the token to non-cookie clients
+    return {"message": "Login successful", "access_token": token}
 
 
 @router.get('/me')

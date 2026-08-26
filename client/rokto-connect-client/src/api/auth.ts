@@ -1,4 +1,5 @@
 import { api } from './axios'
+import { clearSessionToken, setSessionToken } from './session'
 
 export interface RegisterRequest {
   first_name: string
@@ -14,6 +15,9 @@ export interface RegisterRequest {
 
 export const registerUser = async (payload: RegisterRequest) => {
   const response = await api.post('/register', payload)
+  // the server returns the JWT alongside setting its session cookie;
+  // storing it lets cross-site deployments keep the session via header
+  if (response.data?.access_token) setSessionToken(response.data.access_token)
   return response.data
 }
 
@@ -23,12 +27,13 @@ export interface LoginRequest {
 }
 
 export const loginUser = async (payload: LoginRequest) => {
-  // server should set HttpOnly cookie on successful login
   const response = await api.post('/login', payload, { withCredentials: true })
+  if (response.data?.access_token) setSessionToken(response.data.access_token)
   return response.data
 }
 
 export const logoutUser = async () => {
   const res = await api.post('/logout')
+  clearSessionToken()
   return res.data
 }
