@@ -17,12 +17,8 @@ export default function ProtectedLayout() {
   const location = useLocation()
   const isChatPage = location.pathname.startsWith('/chat/')
 
-  const handleLogout = async () => {
-    try {
-      await logoutUser()
-    } catch (e) {
-      // ignore
-    }
+  const handleLogout = () => {
+    logoutUser()
     clearUser()
     navigate('/login')
   }

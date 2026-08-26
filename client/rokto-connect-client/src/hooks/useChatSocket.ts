@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { API_ORIGIN } from '../api/axios'
+import { getAccessToken } from '../stores/auth'
 
 export interface ChatMessage {
   text: string
@@ -21,7 +22,9 @@ export function useChatSocket(requestId: number | null, enabled: boolean) {
     }
 
     const socketUrl = API_ORIGIN.replace(/^http/, 'ws')
-    const socket = new WebSocket(`${socketUrl}/api/v1/ws/requests/${requestId}/chat`)
+    const token = getAccessToken()
+    const authQuery = token ? `?token=${encodeURIComponent(token)}` : ''
+    const socket = new WebSocket(`${socketUrl}/api/v1/ws/requests/${requestId}/chat${authQuery}`)
     socketRef.current = socket
 
     socket.onopen = () => {

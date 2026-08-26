@@ -1,5 +1,5 @@
 import { api } from './axios'
-import { clearSessionToken, setSessionToken } from './session'
+import { clearAccessToken, setAccessToken } from '../stores/auth'
 
 export interface RegisterRequest {
   first_name: string
@@ -15,9 +15,7 @@ export interface RegisterRequest {
 
 export const registerUser = async (payload: RegisterRequest) => {
   const response = await api.post('/register', payload)
-  // the server returns the JWT alongside setting its session cookie;
-  // storing it lets cross-site deployments keep the session via header
-  if (response.data?.access_token) setSessionToken(response.data.access_token)
+  if (response.data?.access_token) setAccessToken(response.data.access_token)
   return response.data
 }
 
@@ -27,13 +25,12 @@ export interface LoginRequest {
 }
 
 export const loginUser = async (payload: LoginRequest) => {
-  const response = await api.post('/login', payload, { withCredentials: true })
-  if (response.data?.access_token) setSessionToken(response.data.access_token)
+  const response = await api.post('/login', payload)
+  if (response.data?.access_token) setAccessToken(response.data.access_token)
   return response.data
 }
 
-export const logoutUser = async () => {
-  const res = await api.post('/logout')
-  clearSessionToken()
-  return res.data
+export const logoutUser = () => {
+  clearAccessToken()
+  return { message: 'Logged out' }
 }

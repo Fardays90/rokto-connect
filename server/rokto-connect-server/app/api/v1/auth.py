@@ -1,18 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.auth import RegisterSchema, LoginSchema
-from app.core.security import hash_password, create_access_token, verify_password, decode_access_token, ACCESS_TOKEN_EXPIRE_HOURS
+from app.core.security import hash_password, create_access_token, verify_password
 from app.core.db import get_cursor
-import os
-
-COOKIE_NAME = "access_token"
-COOKIE_MAX_AGE = ACCESS_TOKEN_EXPIRE_HOURS * 3600
-COOKIE_SECURE = os.getenv("JWT_COOKIE_SECURE", "false").lower() == "true"
-COOKIE_SAMESITE = "lax"
+from app.api.v1.deps import get_current_user
 
 router = APIRouter()
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(user_data: RegisterSchema, response: Response, cursor=Depends(get_cursor)):
+def register(user_data: RegisterSchema, cursor=Depends(get_cursor)):
     cursor.execute("SELECT user_id FROM USERS WHERE phone_number = %s", (user_data.phone_number,))
     if cursor.fetchone():
         raise HTTPException(status_code=400, detail="Phone number is already registered.")
@@ -29,22 +24,9 @@ def register(user_data: RegisterSchema, response: Response, cursor=Depends(get_c
     new_id = cursor.lastrowid
     
     token = create_access_token({"user_id": new_id, "phone": user_data.phone_number})
-    response.set_cookie(
-        COOKIE_NAME,
-        token,
-        httponly=True,
-        secure=COOKIE_SECURE,
-        samesite=COOKIE_SAMESITE,
-        max_age=COOKIE_MAX_AGE,
-        path='/'
-    )
-    # also return the token so non-cookie clients (e.g. a cross-site deployed
-    # frontend talking to a localhost API) can send it as a Bearer header —
-    # session cookies don't survive third-party contexts
     return {"message": "User registered successfully", "access_token": token}
 @router.post("/login", status_code=status.HTTP_200_OK)
-def login(user_data: LoginSchema, response: Response, cursor=Depends(get_cursor)):
-    print(user_data.phone_number)
+def login(user_data: LoginSchema, cursor=Depends(get_cursor)):
     clean_phone = user_data.phone_number.strip()
     cursor.execute("SELECT user_id, password_hash from USERS WHERE phone_number = %s", (clean_phone,))
     user = cursor.fetchone()
@@ -55,39 +37,12 @@ def login(user_data: LoginSchema, response: Response, cursor=Depends(get_cursor)
     if passwordCorrect is False:
         raise HTTPException(status_code=401, detail="Wrong phone number or password.")
     token = create_access_token({"user_id": user["user_id"], "phone": user_data.phone_number})
-    response.set_cookie(
-        COOKIE_NAME,
-        token,
-        httponly=True,
-        secure=COOKIE_SECURE,
-        samesite=COOKIE_SAMESITE,
-        max_age=COOKIE_MAX_AGE,
-        path='/'
-    )
-    # same rationale as in register: hand the token to non-cookie clients
     return {"message": "Login successful", "access_token": token}
 
 
 @router.get('/me')
-def me(request: Request, cursor=Depends(get_cursor)):
-    token = request.cookies.get(COOKIE_NAME)
-    if not token:
-        auth = request.headers.get('Authorization')
-        if auth and auth.lower().startswith('bearer '):
-            token = auth.split(' ', 1)[1]
-
-    if not token:
-        raise HTTPException(status_code=401, detail='Not authenticated')
-
-    payload = decode_access_token(token)
-    if payload is None:
-        raise HTTPException(status_code=401, detail='Invalid or expired token')
-
-    user_id = payload.get('user_id')
-    cursor.execute('SELECT * FROM USERS WHERE user_id = %s', (user_id,))
-    user = cursor.fetchone()
-    if not user:
-        raise HTTPException(status_code=404, detail='User not found')
+def me(user=Depends(get_current_user), cursor=Depends(get_cursor)):
+    user_id = user['user_id']
     cursor.execute(
         'SELECT blood_type, donation_count, request_id FROM DONOR WHERE user_id = %s',
         (user_id,),
@@ -110,6 +65,5 @@ def me(request: Request, cursor=Depends(get_cursor)):
 
 
 @router.post('/logout')
-def logout(response: Response):
-    response.delete_cookie(COOKIE_NAME, path='/')
+def logout():
     return {"message": "Logged out"}

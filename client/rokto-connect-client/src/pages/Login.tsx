@@ -39,7 +39,7 @@ export default function Login() {
 
   const navigate = useNavigate()
 
-  // when login succeeds, fetch current user which should be authenticated via cookie and then redirect
+  // The login call stores the JWT before this authenticated user request runs.
   React.useEffect(() => {
     if (isSuccess) {
       ;(async () => {

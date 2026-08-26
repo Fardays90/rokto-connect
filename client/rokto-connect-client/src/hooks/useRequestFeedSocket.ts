@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { API_ORIGIN } from '../api/axios'
-import { getSessionToken } from '../api/session'
+import { getAccessToken } from '../stores/auth'
 import { useCurrentUser } from './useCurrentUser'
 
 const MAX_BACKOFF_MS = 30000
@@ -38,9 +38,8 @@ export function useRequestFeedSocket() {
     const connect = () => {
       if (closedByCleanup) return
 
-      // browsers can't send headers during a WS handshake; when there's no
-      // session cookie (cross-site deployments) pass the token as a param
-      const token = getSessionToken()
+      // Browsers cannot send Authorization headers during a WS handshake.
+      const token = getAccessToken()
       const wsBase = API_ORIGIN.replace(/^http/, 'ws')
       const authQuery = token ? `?token=${encodeURIComponent(token)}` : ''
       socket = new WebSocket(`${wsBase}/api/v1/ws/requests${authQuery}`)
