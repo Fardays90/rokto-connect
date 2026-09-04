@@ -2,6 +2,9 @@
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { logoutUser } from '../api/auth'
 import { useClearCurrentUser, useCurrentUser } from '../hooks/useCurrentUser'
+import NotificationBell from './NotificationBell'
+import NotificationToast from './NotificationToast'
+import { useNotificationSocket } from '../hooks/useRequestFeedSocket'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg px-3 py-2 text-sm transition ${
@@ -16,6 +19,8 @@ export default function ProtectedLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const isChatPage = location.pathname.startsWith('/chat/')
+
+  const { toast, clearToast } = useNotificationSocket()
 
   const handleLogout = () => {
     logoutUser()
@@ -62,6 +67,7 @@ export default function ProtectedLayout() {
           </div>
 
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <div className="hidden items-center gap-2.5 sm:flex">
               <div
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[color:var(--rc-blood)] to-[color:var(--rc-blood-deep)] text-[11px] font-bold text-white"
@@ -98,6 +104,8 @@ export default function ProtectedLayout() {
           </p>
         </div>
       </footer>}
+
+      {toast && <NotificationToast notification={toast} onClose={clearToast} />}
     </div>
   )
 }

@@ -15,6 +15,7 @@ import Leaderboard from './pages/Leaderboard'
 import Profile from './pages/Profile'
 import DonorRequests from './pages/DonorRequests'
 import Chat from './pages/Chat'
+import Notifications from './pages/Notifications'
 
 const FONT_HREF =
   "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap";
@@ -133,6 +134,7 @@ export default function App() {
             <Route path="/profile" element={<Profile/>} />
             <Route path="/donor/requests" element={<DonorRequests/>} />
             <Route path="/chat/:requestId" element={<Chat/>} />
+            <Route path="/notifications" element={<Notifications/>} />
           </Route>
       </Routes>
     </div>

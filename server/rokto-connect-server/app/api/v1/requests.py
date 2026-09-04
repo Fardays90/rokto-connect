@@ -7,7 +7,7 @@ from pymysql.cursors import Cursor
 
 from app.api.v1.deps import get_current_user, get_ws_user
 from app.core.db import get_cursor
-from app.core.ws import chat_manager, manager, notify_feed_event, run_ping_loop
+from app.core.ws import chat_manager, manager, notify_feed_event, notify_users, run_ping_loop
 from app.schemas.requests import CompleteRequestSchema, CreateRequestSchema, UpdateRequestSchema
 
 router = APIRouter(tags=["requests"])
@@ -106,6 +106,45 @@ def create_request(
             "division": division,
         },
     )
+
+    cursor.execute(
+        """
+        SELECT d.user_id
+        FROM DONOR d
+        INNER JOIN USERS u ON u.user_id = d.user_id
+        WHERE LOWER(TRIM(u.division)) = LOWER(TRIM(%s))
+          AND d.request_id IS NULL
+          AND d.user_id != %s
+        """,
+        (division, user_id),
+    )
+    donors = cursor.fetchall()
+    if donors:
+        donor_ids: list[int] = [d["user_id"] for d in donors]
+        cursor.execute(
+            "INSERT INTO NOTIFICATION (request_id, read_status, created_at) VALUES (%s, 'PENDING', UTC_TIMESTAMP())",
+            (request_id,),
+        )
+        notif_id = cursor.lastrowid
+        for did in donor_ids:
+            cursor.execute(
+                "INSERT INTO SENT_TO (user_id, notification_id) VALUES (%s, %s)",
+                (did, notif_id),
+            )
+        cursor.connection.commit()
+        notify_users(
+            donor_ids,
+            {
+                "type": "new_notification",
+                "notification_id": notif_id,
+                "request_id": request_id,
+                "blood_type": payload.blood_type,
+                "division": division,
+                "district": district,
+                "message": f"New {payload.blood_type} blood request in {district or division}.",
+            },
+        )
+
     return {
         "message": "Blood request created successfully",
         "request_id": request_id,
@@ -215,6 +254,13 @@ def delete_request(
     request_row = fetch_request(cursor, request_id)
     ensure_owner(request_row, user)
 
+    # unlink any attached donor first: DONOR.request_id references REQUEST
+    # with ON DELETE CASCADE, so deleting the request would otherwise delete
+    # the donor's whole DONOR row and silently revoke their donor status
+    cursor.execute(
+        "UPDATE DONOR SET request_id = NULL WHERE request_id = %s",
+        (request_id,),
+    )
     cursor.execute("DELETE FROM REQUEST WHERE request_id = %s", (request_id,))
     cursor.connection.commit()
 
@@ -294,6 +340,28 @@ def accept_request(
             "type": "request_updated",
             "request_id": request_id,
             "division": request_row["division"],
+        },
+    )
+
+    cursor.execute(
+        "INSERT INTO NOTIFICATION (request_id, read_status, created_at) VALUES (%s, 'PENDING', UTC_TIMESTAMP())",
+        (request_id,),
+    )
+    notif_id = cursor.lastrowid
+    cursor.execute(
+        "INSERT INTO SENT_TO (user_id, notification_id) VALUES (%s, %s)",
+        (request_row["user_id"], notif_id),
+    )
+    cursor.connection.commit()
+    notify_users(
+        [request_row["user_id"]],
+        {
+            "type": "new_notification",
+            "notification_id": notif_id,
+            "request_id": request_id,
+            "blood_type": request_row["blood_type"],
+            "division": request_row["division"],
+            "message": "Your blood request has been accepted by a donor.",
         },
     )
 

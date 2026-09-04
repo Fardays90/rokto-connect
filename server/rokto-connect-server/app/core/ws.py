@@ -36,6 +36,17 @@ class ConnectionManager:
             except Exception:
                 await self.disconnect(entry)
 
+    async def broadcast_to_users(self, user_ids: List[int], data: Dict[str, Any]) -> None:
+        async with self._lock:
+            targets = [c for c in self._connections if c["user_id"] in user_ids]
+
+        payload = json.dumps(data)
+        for entry in targets:
+            try:
+                await entry["websocket"].send_text(payload)
+            except Exception:
+                await self.disconnect(entry)
+
 
 manager = ConnectionManager()
 
@@ -85,11 +96,24 @@ def capture_loop() -> None:
     global _event_loop
     _event_loop = asyncio.get_running_loop()
 def notify_feed_event(division: Optional[str], data: Dict[str, Any]) -> None:
-    if _event_loop is None or not division:
+    if _event_loop is None:
+        print("notify_feed_event skipped: event loop not captured (server lifespan did not run).")
+        return
+    if not division:
+        print("notify_feed_event skipped: missing division.")
         return
     asyncio.run_coroutine_threadsafe(manager.broadcast_request_created(division, data), _event_loop)
 def notify_request_created(division: Optional[str], data: Dict[str, Any]) -> None:
     notify_feed_event(division, data)
+def notify_users(user_ids: List[int], data: Dict[str, Any]) -> None:
+    if _event_loop is None:
+        print("notify_users skipped: event loop not captured (server lifespan did not run).")
+        return
+    if not user_ids:
+        print("notify_users skipped: no target users.")
+        return
+    print(f"notify_users: dispatching '{data.get('type')}' to users {user_ids}.")
+    asyncio.run_coroutine_threadsafe(manager.broadcast_to_users(user_ids, data), _event_loop)
 async def run_ping_loop(websocket: WebSocket, interval: int = PING_INTERVAL_SECONDS) -> None:
     try:
         while True:
