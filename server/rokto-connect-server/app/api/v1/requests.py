@@ -452,15 +452,15 @@ def complete_request(
         (donor["donor_id"],),
     )
     cursor.execute(
-        "UPDATE REQUEST SET status = %s WHERE request_id = %s",
-        (COMPLETED_STATUS, request_id),
+        "DELETE FROM REQUEST WHERE request_id = %s",
+        (request_id,),
     )
     cursor.connection.commit()
 
     notify_feed_event(
         request_row["division"],
         {
-            "type": "request_updated",
+            "type": "request_deleted",
             "request_id": request_id,
             "division": request_row["division"],
         },
