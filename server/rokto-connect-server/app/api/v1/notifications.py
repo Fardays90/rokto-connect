@@ -101,11 +101,6 @@ def delete_all_notifications(
     user: Dict[str, Any] = Depends(get_current_user),
     cursor: Cursor = Depends(get_cursor),
 ):
-    """Remove every notification from the current user's inbox.
-
-    Deletes the user's SENT_TO links (the per-user association), then cleans
-    up any NOTIFICATION rows that no longer have a link to any user.
-    """
     cursor.connection.begin()
     cursor.execute(
         """
